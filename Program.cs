@@ -3,7 +3,7 @@ using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Running;
 using Bogus;
-using JsonCompare;
+using Person = JsonCompare.Person;
 
 [MemoryDiagnoser(false)]
 [GroupBenchmarksBy(BenchmarkLogicalGroupRule.ByCategory)]
@@ -12,93 +12,86 @@ public class JsonSerializerVsJsonConvert
 {
     [Params(10000)]
     public int Count { get; set; }
-    private List<Customer> customers = [];
-    private string customersJson = "";
+    private List<Person> persons = [];
+    private string personsJson = "";
 
-    private List<string> customerJson = [];
+    private List<string> personListJson = [];
 
     [GlobalSetup]
     public void GlobalSetup()
     {
-        var testAddress = new Faker<Address>()
-        .RuleFor(a => a.City, f => f.Address.City())
-        .RuleFor(a => a.Street, f => f.Address.StreetName())
-        .RuleFor(a => a.Longitude, f => f.Address.Longitude())
-        .RuleFor(a => a.Latitude, f => f.Address.Latitude());
-
-        var faker = new Faker<Customer>()
+        var faker = new Faker<Person>()
         .RuleFor(c => c.Name, f => f.Name.FullName())
-        .RuleFor(c => c.Orders, f => f.Random.Int(1, 100))
+        .RuleFor(c => c.Age, f => f.Random.Int(1, 100))
         .RuleFor(c => c.DateOfBirth, f => f.Date.Recent())
-        .RuleFor(c => c.EmailAddress, f => f.Internet.Email())
-        .RuleFor(c => c.IpAddress, f => f.Internet.Ip())
-        .RuleFor(c => c.Addresses, f => testAddress.Generate(f.Random.Int(1, 10)).ToArray());
+        .RuleFor(c => c.IsMarried, f => f.Random.Bool())
+        .RuleFor(c => c.Children, f => f.Lorem.Words(f.Random.Int(1, 5)));
 
-        customers = faker.Generate(Count);
-        customersJson = System.Text.Json.JsonSerializer.Serialize(customers);
+        persons = faker.Generate(Count);
+        personsJson = System.Text.Json.JsonSerializer.Serialize(persons);
 
-        customerJson = customers.Select(c => System.Text.Json.JsonSerializer.Serialize(c)).ToList();
+        personListJson = persons.Select(c => System.Text.Json.JsonSerializer.Serialize(c)).ToList();
     }
 
     [BenchmarkCategory("DeserializeBigData"), Benchmark]
     public void JsonSerializer_Deserialize_BigData()
     {
-        _ = System.Text.Json.JsonSerializer.Deserialize<List<Customer>>(customersJson);
+        _ = System.Text.Json.JsonSerializer.Deserialize<List<Person>>(personsJson);
     }
 
     [BenchmarkCategory("DeserializeBigData"), Benchmark(Baseline = true)]
     public void JsonConvert_Deserialize_BigData()
     {
-        _ = Newtonsoft.Json.JsonConvert.DeserializeObject<List<Customer>>(customersJson);
+        _ = Newtonsoft.Json.JsonConvert.DeserializeObject<List<Person>>(personsJson);
     }
 
-    [BenchmarkCategory("DeserializeSmallData"), Benchmark]
-    public void JsonSerializer_Deserialize_SmallData()
-    {
-        foreach (var customer in customerJson)
+        [BenchmarkCategory("DeserializeSmallData"), Benchmark]
+        public void JsonSerializer_Deserialize_SmallData()
         {
-            _ = System.Text.Json.JsonSerializer.Deserialize<Customer>(customer);
+            foreach (var person in personListJson)
+            {
+                _ = System.Text.Json.JsonSerializer.Deserialize<Person>(person);
+            }
         }
-    }
 
-    [BenchmarkCategory("DeserializeSmallData"), Benchmark(Baseline = true)]
-    public void JsonConvert_Deserialize_SmallData()
-    {
-        foreach (var customer in customerJson)
+        [BenchmarkCategory("DeserializeSmallData"), Benchmark(Baseline = true)]
+        public void JsonConvert_Deserialize_SmallData()
         {
-            _ = Newtonsoft.Json.JsonConvert.DeserializeObject<Customer>(customer);
+            foreach (var person in personListJson)
+            {
+                _ = Newtonsoft.Json.JsonConvert.DeserializeObject<Person>(person);
+            }
         }
-    }
 
-    [BenchmarkCategory("SerializeBigData"), Benchmark]
-    public void JsonSerializer_Serialize_BigData()
-    {
-        _ = System.Text.Json.JsonSerializer.Serialize(customers);
-    }
-
-    [BenchmarkCategory("SerializeBigData"), Benchmark(Baseline = true)]
-    public void JsonConvert_Serialize_BigData()
-    {
-        _ = Newtonsoft.Json.JsonConvert.SerializeObject(customers);
-    }
-
-    [BenchmarkCategory("SerializeSmallData"), Benchmark]
-    public void JsonSerializer_Serialize_SmallData()
-    {
-        foreach (var customer in customers)
+        [BenchmarkCategory("SerializeBigData"), Benchmark]
+        public void JsonSerializer_Serialize_BigData()
         {
-            _ = System.Text.Json.JsonSerializer.Serialize(customer);
+            _ = System.Text.Json.JsonSerializer.Serialize(persons);
         }
-    }
 
-    [BenchmarkCategory("SerializeSmallData"), Benchmark(Baseline = true)]
-    public void JsonConvert_Serialize_SmallData()
-    {
-        foreach (var customer in customers)
+        [BenchmarkCategory("SerializeBigData"), Benchmark(Baseline = true)]
+        public void JsonConvert_Serialize_BigData()
         {
-            _ = Newtonsoft.Json.JsonConvert.SerializeObject(customer);
+            _ = Newtonsoft.Json.JsonConvert.SerializeObject(persons);
         }
-    }
+
+        [BenchmarkCategory("SerializeSmallData"), Benchmark]
+        public void JsonSerializer_Serialize_SmallData()
+        {
+            foreach (var person in persons)
+            {
+                _ = System.Text.Json.JsonSerializer.Serialize(person);
+            }
+        }
+
+        [BenchmarkCategory("SerializeSmallData"), Benchmark(Baseline = true)]
+        public void JsonConvert_Serialize_SmallData()
+        {
+            foreach (var person in persons)
+            {
+                _ = Newtonsoft.Json.JsonConvert.SerializeObject(person);
+            }
+        }
 }
 
 public class Program
